@@ -1,0 +1,424 @@
+---
+title: "Lab 3: Multiple Linear Regression"
+author: "Reese Quillian"
+date: "2022-10-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+# Loading packages and files
+
+traindir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class/Data/Train Data"
+sourcedir <-"C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/Lab 3"
+
+# load data
+setwd(sourcedir)
+source("AccidentInput.R")
+
+# load libraries
+library(ggplot2)
+library(GGally)
+library(devtools)
+library(psych)
+library(ggfortify)
+
+
+acts <- file.inputl(traindir)
+
+totacts <- combine.data(acts)
+```
+
+
+### Part 2
+
+For this part you should use a data frame that has all rail accident data from year 2001 to 2022.  
+
+1.  Create a new data frame which includes only accidents above the upper whisker for ACCDMG.
+
+2.  Remove 9/11 for your extreme accidents data frame.
+
+3.  Remove the duplicated reports from the new data frame with these extreme accidents.
+
+4.  For the all of the questions in this lab use this new "de-duplicated" data frame.
+
+In all the following questions, use the significance level of 0.05.  Use 2 digits to the right of the decimal for any numeric response.
+
+```{r}
+# Build a data frame with only extreme accidents for ACCDMG
+
+dmgbox <-boxplot(totacts$ACCDMG)
+
+# accidents above upper whisker
+xdmg <- totacts[totacts$ACCDMG > dmgbox$stats[5],]
+
+#remove 9/11
+xdmg <- xdmg[-183,]
+
+## Remove duplicates from xdmg and call new data frame xdmgnd
+xdmgnd <- xdmg[!(duplicated(xdmg[, c("INCDTNO", "YEAR", "MONTH", "DAY", "TIMEHR", "TIMEMIN")])),]
+```
+
+
+
+#### Question 22 of 41
+
+Build a model accdmg.lm1, ACCDMG~TEMP + TRNSPD + CARS + HEADEND1.
+
+In the model accdmg.lm1,  the value of adjusted R2 is: 
+
+```{r}
+accdmg.lm1<-lm(ACCDMG~TEMP+TRNSPD+CARS+HEADEND1, data=xdmgnd)
+summary(accdmg.lm1)
+```
+
+ 
+
+#### Question 23 of 41
+
+Which of the following is true about accdmg.lm1?
+
+ A. accdmg.lm1 is significant overall.	
+ B. All of the predictors in accdmg.lm1 are significant at the 0.05 level.	
+ C. None of the predictors in accdmg.lm1 are significant at the 0.05 level.	
+ D. All of the predictors except 1 in accdmg.lm1 are significant at the 0.05 level.	
+```{r}
+# A and D are true
+```
+
+
+#### Question 24 of 41
+
+Which interpretation(s) of accdmg.lm1 is(are) correct?
+
+
+A. CARS is statistically significant in explaining the variance of total accident damage	*true
+ B. If the train speed (TRNSPD) increases, there is a statistically significant increase in accident damage.	* true
+ C. If temperature increases, there is a statistically significant decrease in accident damage.	
+ D. This model allows us to examine the relationship between train speed and accident damage while controlling for the effects of temperature, number of cars carrying hazmat, and number of head end locomotives.	
+
+```{r}
+coef(accdmg.lm1)
+```
+
+
+#### Question 25 of 41
+
+Answer the following questions about the estimated parameters for the linear model accdmg.lm1:
+
+The intercept, B0, is:
+
+The coefficient for TRNSPD, BTRNSPD is:
+
+```{r}
+# B0 = 479947.6141
+# BTRSNPD = 18017.3925
+```
+ 
+
+#### Question 26 of 41
+
+The model accdmg.lm1 has an F-statistic of ______________ 
+ on  ____________________
+ and   __________________ degrees of freedom.
+
+```{r}
+# F-statistic: 136.2 on 4 and 7596 DF,  p-value: < 2.2e-16
+```
+ 
+
+#### Question 27 of 41
+
+Create diagnostic plots for this new model accdmg.lm1.
+
+There are (is) _______ point(s) with a Cook's distance greater than 0.4.
+
+ A. 0
+ B. 1
+ C. 2
+ D. 3
+ 
+```{r}
+par(mfrow = c(2, 2))
+plot(accdmg.lm1)
+```
+
+```{r}
+cooks <- cooks.distance(accdmg.lm1)
+cooks[(cooks > 0.4)]
+```
+
+
+#### Question 28 of 41
+
+Which of the following statements is true about the observation with the highest Cook's distance?
+
+ A. The accident is of type derailment.	
+ B. This accident has Cook's distance greater than 1.0	
+ C. This accident had over 50 injuries.	
+ D. This accident costs more than $30 million.	
+ 
+```{r}
+
+autoplot(accdmg.lm1, which=4, ncol = 1, label.size = 3) + theme_bw()
+totacts[47965,]
+
+# type 1 = Derailment
+```
+
+
+#### Question 29 of 41
+
+Based on the Residual vs Fitted diagnostic plot for accdmg.lm1, which of the following statements are true?
+ A. The model accdmg.lm1 shows no violation of the regression assumptions.	
+ B. The variance of the error term is constant and has a mean of 0.	
+ C. There are no outliers	
+ D. The error term has a non constant variance.	
+ 
+```{r}
+autoplot(accdmg.lm1,which=1, ncol = 1, label.size = 3) + theme_bw()
+#Residual vs. Fitted
+```
+ 
+
+#### Question 30 of 41
+
+Based on your diagnostic plots for accdmg.lm1, the residuals do not follow a normal distribution indicating the potential need for a transformation of the response.
+
+ A. True
+ B. False
+
+```{r}
+autoplot(accdmg.lm1,which=2, ncol = 1, label.size = 3) + theme_bw() #QQ
+```
+
+
+#### Question 31 of 41
+
+Use the boxcox function (load library(MASS) first) with model accdmg.lm1.
+The optimal lambda to normalize ACCDMG is ___________.
+
+```{r}
+library(MASS)
+boxcox(accdmg.lm1)
+
+# best lambda value
+boxcox(accdmg.lm1, plotit = F)$x[which.max(boxcox(accdmg.lm1, plotit = F)$y)] 
+```
+ 
+
+#### Question 32 of 41
+
+Use the boxcox function with model accdmg.lm1.
+The maximum y value (log-likelihood) from the boxcox function is ______________.
+
+```{r}
+max(boxcox(accdmg.lm1, plotit = F)$y)
+```
+ 
+
+#### Question 33 of 41
+
+Transform the response variable ACCDMG as suggested by the Box-Cox plot. Build a new model with the transformed response variable and the same predictors as in model accdmg.lm1. Call this new model accdmg.lm1.trans.
+
+Which of the following statements is true?
+
+ A. accdmg.lm1 is better based on the diagnostics plots.	
+ B. accdmg.lm1.trans is better based on the diagnostics plots.	
+ C. In the transformed model, there are 3 points in the Cook's distance greater than 0.5.	
+ D. In the transformed model, there are no points in the Cook's distance greater than 0.02.	
+
+```{r}
+
+##The best lambda and store in L
+
+L<-boxcox(accdmg.lm1, plotit = F)$x[which.max(boxcox(accdmg.lm1, plotit = F)$y)] 
+
+##The model with the best lamda transformation
+
+accdmg.lm1.trans<-lm((ACCDMG^L-1)/L~TEMP+TRNSPD+CARS+HEADEND1,data=xdmgnd)
+
+# diagnostic plots
+par(mfrow = c(2, 2))
+plot(accdmg.lm1.trans)
+```
+
+```{r}
+max(cooks.distance(accdmg.lm1.trans))
+```
+
+#### Question 34 of 41
+
+Consider the WEATHER variable. Suppose that we want to determine if accident damage (ACCDMG) that occurred in foggy weather is the same as the damages that occur in rainy weather. We can use linear regression models to test this hypothesis. Which of the following statements is correct?
+
+ A. We can use any weather level as the base case.
+ B. We don't have to convert the WEATHER variable into a categorical variable before building the linear model.
+ C. We can use the default coding in R to code as.factor(WEATHER) by dummy variables.
+ D. We can use foggy weather or rainy weather as the base case.
+
+```{r}
+# C
+```
+
+
+#### Question 35 of 41
+
+Build a model accdmg.lm2, to predict accident damage in terms of type of accident.
+response variable: ACCDMG
+predictor: TYPE (with thirteen values)
+
+_________________ dummy variables are used to code TYPE
+
+```{r}
+# 12 dummy variables (+ 1 base case)
+
+# Convert Type to a factor and give more meaningful labels
+xdmgnd$Type <- factor(xdmgnd$TYPE, labels = c("Derailment", "HeadOn", "Rearend", "Side", "Raking", "BrokenTrain", "Hwy-Rail", "GradeX", "Obstruction", "Explosive", "Fire","Other","SeeNarrative"))
+
+# now that Type is a factor, build LM:
+accdmg.lm2<-lm(ACCDMG~Type,data=xdmgnd)
+summary(accdmg.lm2) 
+```
+ 
+
+#### Question 36 of 41
+
+In the model accdmg.lm2, the default base case (without recoding) in R is:
+ A. Derailment
+ B. Head on collision
+ C. Rear end collision
+ D. Side collision
+ E. Raking collision
+ F. Other
+
+```{r}
+# derailment; based on alphabetic order
+contrasts(xdmgnd$Type)
+```
+
+
+#### Question 37 of 41
+
+Create a new categorical variable, Derail using 1 dummy variable- 1 level denoting accidents of type derailment and 0 denoting all other types of accidents that are not of type derailment.  
+
+Build a new model accdmg.lm3 to compare derailments to all other types of accidents (your model should have only 1 predictor). Test the following hypothesis: "Derailments do not increase the severity of accident damage."
+
+Which of the follow statements is true?
+
+ A. Derailments cost significantly more than other types of accidents.
+ B. Derailments cost significantly less than other types of accidents.
+ C. There is not a significant difference in the cost of derailments and other types of accidents.
+
+```{r}
+# Create Derail variable
+Derail <- rep(0, nrow(xdmgnd))
+Derail[which(xdmgnd$Type == "Derailment")] <- 1 
+Derail <- as.factor(Derail)
+
+accdmg.lm3<-lm(ACCDMG~Derail,data=xdmgnd)
+summary(accdmg.lm3) 
+```
+
+
+#### Question 38 of 41
+
+Build a stepwise model from the full main effects + interaction model with Derail, TRNSPD, TONS, CARS, and HEADEND1.  Call the main effects + interaction model accdmg.lm4 and the stepwise model accdmg.lm4.step.  Which of the following statements is true about the stepwise model?
+
+ A. Derailments cost significantly more than other types of accidents.	
+ B. High speed derailments cost significantly more that other types of accidents	
+ C. High weight derailments cost significantly more than other types of accidents.	 D. There are 10 parameters significant at the P < 0.05 level.	
+
+```{r}
+accdmg.lm4<-lm(ACCDMG~(Derail+TRNSPD+TONS+CARS+HEADEND1)^2,data=xdmgnd)
+accdmg.lm4.step <- step(accdmg.lm4)
+```
+
+
+
+#### Question 39 of 41
+
+Perform a partial F test between accdmg.lm4 and accdmg.lm4.step. Which model do you choose?
+
+ A. accdmg.lm4
+ B. accdmg.lm4.step
+ C. They are the same.
+ D. None of the above
+
+```{r}
+anova(accdmg.lm4,accdmg.lm4.step)
+```
+
+models are not significantly different
+
+#### Question 40 of 41
+
+Which of the following statements is true about the models accdmg.lm4 and accdmg.lm4.step?
+
+ A. accdmg.lm4 is the best based on AIC.	
+ B. The BIC is the same for accdmg.lm4 and accdmg.lm4.step.	
+ C. accdmg.lm4.step is the best model according to AIC.	
+ D. none of the above	
+ 
+```{r}
+AIC(accdmg.lm4)
+AIC(accdmg.lm4.step) # better
+
+BIC(accdmg.lm4)
+BIC(accdmg.lm4.step) # better
+```
+ 
+
+#### Question 41 of 41
+
+Plot the following interactions with log(ACCDMG) using the median as the cutpoint for TRNSPD and 1 as the cutpoint for CARS.
+
+TRNSPD, CARS
+TRNSPD, Freight
+TRNSPD, Derail
+Note, you'll have to create a binary variable for Freight like you did for Derail. Which of the following statements are true?
+
+ A. The interaction plot of TRNSPD and CARS with log(ACCDMG) shows there are greater damages at high speeds when more hazard cars derail.	
+ B. High speed freight train accidents have less damages than high speed non-freight accidents.	
+ C. For the interaction plot of TRNSPD and Derail with ACCDMG, the lines have different non-zero slopes, indicating a main effect from TRNSPD and an interaction between TRNSPD and Derail.	
+ D. High speed derailments result in more damages on average than low speed derailments.
+ 
+```{r}
+# binary variables
+Speed <- cut(xdmgnd$TRNSPD, c(min(xdmgnd$TRNSPD),median(xdmgnd$TRNSPD),max(xdmgnd$TRNSPD)), include.lowest = T, labels = c("low speed", "high speed"))
+
+Cars <- cut(xdmgnd$CARS, c(min(xdmgnd$CARS),1,max(xdmgnd$CARS)), include.lowest = T, right=F,labels = c("low hzd", "high hzd"))
+
+# freight
+# Type of train
+xdmgnd$TYPEQ <- as.numeric(xdmgnd$TYPEQ)
+
+# Now convert to factor with meaningful labels
+xdmgnd$TYPEQ <- factor(xdmgnd$TYPEQ, labels = c("Freight", "Passenger", "Commuter", "Work",  "Single", "CutofCars", "Yard", "Light", "Maint"))
+
+Freight <- rep(0, nrow(xdmgnd))
+Freight[which(xdmgnd$TYPEQ == "Freight")] <- 1 
+Freight <- as.factor(Freight)
+
+```
+
+
+```{r}
+# speed and cars
+interaction.plot(Speed, Cars, log(xdmgnd$ACCDMG))
+```
+
+
+```{r}
+# Plot interaction between speed and freight
+interaction.plot(Speed, Freight, log(xdmgnd$ACCDMG))
+```
+
+```{r}
+# speed and derail
+interaction.plot(Speed, Derail, log(xdmgnd$ACCDMG))
+```
+

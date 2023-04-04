@@ -1,0 +1,238 @@
+---
+title: 'Lab 7: Final Review'
+author: "Reese Quillian"
+date: "2022-12-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(forecast)
+library(mtsdi)
+library(MTS)
+library(ggplot2)
+library(ggfortify)
+library(tseries)
+library(ggpubr)
+library(tidyverse)
+library(ggResidpanel)
+library(psych)
+library(GGally)
+library(devtools)
+library(here)
+library(dplyr)
+library(MASS)
+library(lindia)
+```
+
+
+# Part 1: GLM
+```{r}
+# setup, load libraries and data
+sourcedir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class"
+datadir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class/Data"
+
+setwd(sourcedir)
+
+source("PCAplots.R")
+source("FactorPlots.R")
+source("pc.glm.R")
+source("ROC.R")
+source("TestSet.R")
+
+titanic <- read.csv("titanic.csv")
+```
+
+```{r}
+# survived
+sum(titanic$Survived)
+```
+```{r}
+# Between Sex, Pclass and Embarked, which variable is most predictive of whether or not passengers survived? (hint: for each variable, consider the difference in the proportion of passengers in each level that survived)
+
+```
+
+
+```{r}
+# quantitative variables: 
+pairs.panels(titanic[,c("Survived","Age", "Fare", "SibSp", "Parch")])
+```
+```{r}
+# Build a main effects logistic regression model of Survived using Sex, Pclass, Embarked and the quantitative variable most correlated with Survived as predictors. Which of the following statement(s) about the model are correct?
+
+# log transform all variables
+titanic.main <- glm(Survived~Sex+Pclass+Embarked+Fare, data = titanic, family = binomial)
+summary(titanic.main)
+```
+
+```{r}
+titanic.null <- glm(Survived~1, data = titanic, family = binomial)
+
+anova(titanic.null, titanic.main, test = "Chi")
+```
+
+
+```{r}
+# Now build a model with the following predictors:  Age, Fare, Sex, and Pclass
+# Which of the following statement is true?
+
+titanic.main2<-glm(Survived~Age+Sex+Pclass+Fare, data=titanic,family=binomial)
+summary(titanic.main2)
+anova(titanic.null, titanic.main2, test = "Chi")
+```
+
+
+
+```{r}
+# Run backward selection for the model you built in question 5.  How many predictors are removed? 
+titanic.step <- step(titanic.main2,direction='backward',trace=T)
+
+# fare removed
+```
+
+```{r}
+# question 7
+# In your backward selection model, interpret the coefficient you found for Age in terms of the percentage change in the odds of survival for each additional unit increase in Age.
+
+titanic.step$coefficients
+# age: -0.0282
+# for percent change, multiply coefficient by 100
+-0.0281346 *100
+```
+```{r}
+# question 8 
+# Use your backward selection model to predict passenger survival (run on the entire data set).  Use a threshold of 0.5 for your decision function.  How many total errors are there? 
+
+step.pred <- predict(titanic.step)
+score.table(step.pred, titanic$Survived, .5)
+```
+
+```{r}
+# total errors
+35+148
+```
+
+```{r}
+# question 9
+# ROC
+plot.roc(step.pred, titanic$Survived, main = "ROC Curve", col = "blue")
+```
+
+
+# Part 2: MLR
+
+```{r}
+auto <- read.csv("auto.csv")
+```
+
+
+```{r}
+# convert cylinders, origin, and car to factors and horsepower to a double.
+auto$horsepower <- as.double(auto$horsepower)
+auto$cylinders<- as.factor(auto$cylinders)
+auto$origin <- as.factor(auto$origin)
+auto$car <- as.factor(auto$car)
+
+str(auto)
+```
+
+```{r}
+ggplot(data=auto, aes(x=mpg)) + geom_boxplot()
+# 1 outlier
+boxplot.stats(auto$mpg)
+```
+```{r}
+pairs.panels(auto[,c("displacement","horsepower", "weight", "acceleration", "year","mpg")])
+# weight = highest, -0.83
+```
+```{r}
+# Q12
+# Build a main effects model, mpg.main, using cylinders, weight, and displacement.
+# Which of the following statements is true about the model?
+mpg.main <- lm(mpg~cylinders+weight+displacement,data=auto)
+summary(mpg.main)
+```
+```{r}
+# question 14
+contrasts(auto$cylinders)
+table(auto$cylinders)
+```
+
+```{r}
+# Q15
+# Recode your cylinders variable to make cylinders=4 the base case.  Rebuild the model mpg.main with your recoded variable.  Call this new model mpg.main.rec.
+# Which of the following statements are true about this new model?
+contrasts(auto$cylinders)<-matrix(c(1,0,0,0,0, 0,0,1,0,0, 0,0,0,1,0, 0,0,0,0,1),nrow=5)
+colnames(contrasts(auto$cylinders)) <-matrix(c("3","5","6","8"),ncol=4)
+contrasts(auto$cylinders)
+```
+
+```{r}
+mpg.main.rec <- lm(mpg~cylinders+weight+displacement,data=auto)
+summary(mpg.main.rec)
+```
+
+```{r}
+autoplot(mpg.main.rec)
+```
+```{r}
+autoplot(mpg.main.rec, which=4, ncol = 1, label.size = 3) + theme_bw()
+```
+
+# Part 3: TS
+```{r}
+gnp96 <- read.table("gnp96.dat")
+gnp <- ts(gnp96[,2])
+```
+
+
+Economists like to model log(GNP) because a unit increase in log(GNP) corresponds to a constant percent increase.
+
+Build a model of the trend of log(gnp) using only time as a predictor (include the intercept). Based on the statistical significance of the coefficient on time, we can conclude log(gnp) is stationary
+```{r}
+# question 17
+time<-c(1:(length(gnp)))
+gnp.trend<-lm(log(gnp) ~ time)
+summary(gnp.trend)
+```
+
+```{r}
+# q 18 
+# periodogram
+pg.gnp <- spec.pgram(log(gnp),spans=9,demean=T,log='no')
+```
+```{r}
+# Find the peak, max.omega.NO2
+max.omega<-pg.gnp$freq[which(pg.gnp$spec==max(pg.gnp$spec))]
+
+# Where is the peak?
+max.omega
+
+# What is the period?
+1/max.omega
+```
+```{r}
+ggAcf(log(gnp))
+```
+
+```{r}
+# Plot the ACF of diff(log(gnp)). Which of the following is true?
+ggAcf(diff(log(gnp)))
+```
+```{r}
+ggPacf(diff(log(gnp)))
+```
+```{r}
+gnp.auto1 <- auto.arima(log(gnp),approximation=FALSE)
+summary(gnp.auto1)
+AIC(gnp.auto1)
+```
+
+```{r}
+gnp.auto.diff <- auto.arima(diff(log(gnp)),approximation=FALSE)
+forecast(gnp.auto.diff,h=4)
+```
+

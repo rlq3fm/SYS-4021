@@ -1,0 +1,205 @@
+---
+title: 'Lab 5: GLM'
+author: "Reese Quillian"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load data and packages
+
+sourcedir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/Lab 5"
+datadir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class/Data"
+
+setwd(sourcedir)
+spam <- read.table(paste(datadir,"/Spam.txt", sep=""), sep = " ", header = F)
+
+source("PCAplots.R")
+source("FactorPlots.R")
+source("pc.glm.R")
+source("ROC.R")
+source("TestSet.R")
+
+
+library(ggfortify)
+library(ggResidpanel)
+library(ggplot2)
+library(ggpubr)
+library(psych)
+```
+
+```{r}
+# question 13
+sum(spam[,58])
+```
+
+```{r}
+# log transform all variables
+Lspam <- log(spam[,-58] + .1)
+Lspam[,58] <- spam[,58]
+```
+
+```{r}
+# question 14
+# vars 1-9
+for(i in 1:9)
+{
+  assign(paste0("V", i), ggplot(data = Lspam, aes_string(x=as.factor(Lspam$V58),y=Lspam[,i])) + 
+           geom_boxplot(fill= "steelblue") +
+           ggtitle(paste("V", i, sep = "")))
+}
+
+ggarrange(V1,V2,V3,V4,V5,V6,V7,V8,V9,ncol=3,nrow=3)
+
+```
+
+```{r}
+# question 15
+# vars 20-28
+for(i in 20:28)
+{
+  assign(paste0("V", i), ggplot(data = Lspam, aes_string(x=as.factor(Lspam$V58),y=Lspam[,i])) + 
+           geom_boxplot(fill= "steelblue") +
+           ggtitle(paste("V", i, sep = "")))
+}
+
+ggarrange(V20,V21,V22,V23,V24,V25,V26,V27,V28,ncol=3,nrow=3)
+```
+
+Q16:
+Log transform variables 49-58 with an offset of 0.1. Produce a scatter plot matrix of these transformed variables and the response variable (variable 58). Which of the following best describes what you observe in the correlations of the predictor variables with the response?
+
+
+```{r}
+pairs.panels(Lspam[,c("V49", "V50", "V51", "V52", "V53","V54","V55","V56","V57","V58")])
+```
+
+Q18
+Log transform variables 1-57 with a 0.1 offset then obtain their principal components using the correlation matrix.  Produce the cumplot for the log transformed variables. Which of the following best describes what you observe?
+```{r}
+# variables already log transformed in earlier chunk
+spam.pca = princomp(Lspam[,1:57], cor = T)
+cumplot(spam.pca)
+```
+
+Q19
+Obtain a biplot for the PCA in the previous question with the biplot.fact function (or biplot.fact.gg) and your principal component object as the input. Which of the following best describes what you observe in this plot?
+
+```{r}
+biplot.fact(spam.pca, Lspam[,58])
+```
+
+### Part 3
+
+```{r}
+# making sure syntax is correct to get first and last 10 columns
+head(Lspam[,-(11:47)])
+```
+
+
+```{r}
+# using Lspam as data
+spam.main <- glm(V58~., data = Lspam[,-(11:47)], family = binomial)
+
+# need null model for model utility test:
+spam.null <- glm(V58~1, data = Lspam, family = binomial)
+
+# test
+anova(spam.null, spam.main, test = "Chi")
+```
+
+
+```{r}
+# question 21
+library(MASS)
+
+drop1(spam.main, response~., test = "Chi", data = Lspam)
+```
+
+```{r}
+# 5 is v4 because of intercept
+(exp(spam.main$coefficients[5])-1)*100
+```
+
+```{r}
+# predictions
+# no newdata parameter
+spam.pred <- predict(spam.main, type = "response")
+
+# confusion matrix with T = 0.5
+score.table(spam.pred, spam[,58], .5)
+```
+
+```{r}
+# question 24
+# stepwise selection
+
+step.main <- step(spam.main, data = Lspam, family = binomial)
+summary(step.main)
+```
+
+```{r}
+# partial likelihood test
+anova(spam.main, step.main, test="Chi")
+```
+
+```{r}
+AIC(spam.main)
+AIC(step.main)
+```
+
+```{r}
+# predictions
+# no newdata parameter
+step.pred <- predict(step.main, type = "response")
+
+# confusion matrix with T = 0.5
+score.table(step.pred, spam[,58], .5)
+```
+
+```{r}
+# question 28 
+# ROC curve
+
+plot.roc(spam.pred, spam[,58], main = "ROC Curve - SPAM Filter", col = "blue")
+
+lines.roc(step.pred, spam[,58], col = "orange")
+
+```
+
+```{r}
+spam.pca2 <- princomp(Lspam[,c(1:10,48:57)], cor = T)
+
+
+spampca.glm98 <- pc.glm(spam.pca2, 98, Lspam[,58])
+summary(spampca.glm98)
+```
+
+Q30
+Create a main effects model using the principal components derived from the log transform of the first 10 and last 10 predictors that account for 98% of the variance. Which best describes the significance level for the model utility test for this model?
+
+```{r}
+spampc.null <- pc.null(spam.pca2, 98, Lspam[,58])
+anova(spampc.null,spampca.glm98,test="Chi")
+```
+
+```{r}
+# confusion matrix
+spam98.pred <- predict(spampca.glm98, type = "response")
+
+# confusion matrix with T = 0.5
+score.table(spam98.pred, Lspam[,58], .5)
+```
+
+
+
+```{r}
+score.table(spam.pred, spam[,58], .5)
+score.table(step.pred, spam[,58], .5)
+score.table(spam98.pred, Lspam[,58], .5)
+```
+

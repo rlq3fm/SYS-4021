@@ -1,0 +1,50 @@
+---
+title: 'Lab 7: Final Review'
+author: "Reese Quillian"
+date: "2022-12-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(forecast)
+library(mtsdi)
+library(MTS)
+library(ggplot2)
+library(ggfortify)
+library(tseries)
+library(ggpubr)
+library(tidyverse)
+library(ggResidpanel)
+library(psych)
+```
+
+
+# Part 1: GLM
+```{r}
+# setup, load libraries and data
+sourcedir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class"
+datadir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class/Data"
+
+setwd(sourcedir)
+
+source("PCAplots.R")
+source("FactorPlots.R")
+source("pc.glm.R")
+source("ROC.R")
+source("TestSet.R")
+
+titanic <- read.csv("titanic.csv")
+```
+
+```{r}
+
+```
+
+
+# Part 2: MLR
+
+# Part 3: TS

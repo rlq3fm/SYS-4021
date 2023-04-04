@@ -1,0 +1,250 @@
+---
+title: "Lab 1"
+author: "Reese Quillian"
+date: '2022-09-05'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading packages and files
+```{r}
+# loading packages
+library(tidyverse)
+library(psych)
+library(ggplot2)
+
+# specifying files and directories
+dir_trains <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/Lab 1/Data/TrainData"
+dir_source <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/Lab 1/"
+
+# loading functions from scripts
+source(paste0(dir_source, "AccidentInput.R"))
+source(paste0(dir_source, "SPM_Panel.R"))
+
+fnames_trains <- list.files(dir_trains, pattern = ".csv", full.names = TRUE)
+acts <- lapply(fnames_trains, read.csv)
+comvar <- intersect(colnames(acts[[1]]), colnames(acts[[8]]))
+totacts <- combine.data(acts, comvar)
+
+totacts <- tibble(totacts)
+```
+
+# Part 1
+## Question 1
+```{r}
+# What best describes the source of the train accident data?
+# observations
+```
+
+## Question 2
+```{r}
+# What is the difference between observational data and experimental data?
+
+# In experimental data, we control the values of the experimental variables and observe how other variables change in response, but in observational data we do not control any of the variables.
+```
+
+## Question 3
+```{r}
+# A summary of the rail accident data with the total damages, total injuries, and total deaths across all accidents each year would be an example of what kind of time indexed data?
+
+# all of the above: longitudinal, cross sectional, time series
+```
+
+## Question 4
+```{r}
+# In the train accident data ACCDMG uses what kind of measurement scale?
+
+# ratio - there is an absolute zero
+```
+
+## Question 5
+```{r}
+# In the train accident data CAUSE uses what kind of measurement scale?
+
+# categorical - not quantitative, no implied hierarchy
+```
+
+## Question 6
+```{r}
+# What data scale is the reported accident temperature?
+
+# interval - there are positive and negative values
+```
+
+
+# Part 2
+## Question 7
+```{r}
+# What parameter is chosen by an algorithm in the automatic generation of histograms?
+
+# bin width
+```
+
+## Question 8
+```{r}
+# Plot the histogram of HIGHSPD for all accidents. Which of these statements best describes what you observe?
+ggplot(as.data.frame(totacts), aes(HIGHSPD)) + 
+  geom_histogram() +
+  ggtitle("Highest Reported Accident Speed") + 
+  labs(x = "speed (mph)", y = "Frequency")
+```
+
+## Question 9
+```{r}
+# Generate box plots of EQPDMG for all years starting in 2001. Which statement(s) are correct? (hint: use ggplot box plot)
+ggplot(as.data.frame(totacts), aes(EQPDMG)) + 
+  geom_boxplot() + 
+  ggtitle("Total Reportable Equipment Damage, 2001-2022") + 
+  coord_flip() + 
+  facet_wrap(~YEAR)
+```
+
+## Question 10
+```{r}
+# Generate box plots of TOTKLD for accidents for all years from 2001. Which best describes what you observe?
+ggplot(as.data.frame(totacts), aes(TOTKLD)) + 
+  geom_boxplot() + 
+  ggtitle("Total People Killed in Accidents, 2001-2022") + 
+  coord_flip() + 
+  facet_wrap(~YEAR)
+```
+
+## Question 11
+```{r}
+# Generate box plots of TRKDMG for accidents for all years from 2001. Which best describes what you observe?
+ggplot(as.data.frame(totacts), aes(TRKDMG)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  facet_wrap(~YEAR)
+```
+
+## Question 12
+```{r}
+# Generate box plots of TOTINJ for accidents for all years from 2001. Which best describes what you observe?
+ggplot(as.data.frame(totacts), aes(TOTINJ)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  facet_wrap(~YEAR)
+```
+
+## Question 13
+```{r}
+# What is the incident number (INCDTNO) of the accident with the most injuries over all years?
+totacts %>%
+  select(INCDTNO, IYR3, TOTINJ) %>%
+  arrange(desc(TOTINJ)) %>%
+  head()
+```
+
+## Question 14
+```{r}
+# Generate box plots of CARSDMG for accidents for all years from 2001. Which best describes what you observe?
+ggplot(as.data.frame(totacts), aes(CARSDMG)) + 
+  geom_boxplot() + 
+  coord_flip() + 
+  facet_wrap(~YEAR)
+
+totacts %>% select(IYR3, CARSDMG) %>%
+  filter(IYR3 %in% c(9,12)) %>%
+  arrange(desc(CARSDMG)) %>% head()
+```
+
+## Question 15
+```{r}
+# What best describes what you observe in the histogram for TEMP for all the accidents from 2001 to the present. Use nclass.Sturges to choose breaks. It will be easier to see if you use fill=NA, colour='steelblue'.
+
+ggplot(as.data.frame(totacts), aes(TEMP)) + 
+  geom_histogram(fill=NA, colour = 'steelblue', 
+                 bins = nclass.Sturges(totacts$TEMP))  
+
+```
+
+
+# Part 3
+## Question 16
+```{r}
+#What is the correlation between TRKDMG and ACCDMG in 2 significant digits written as 0.xx
+cor(totacts$TRKDMG, totacts$ACCDMG)
+```
+
+## Question 17
+```{r}
+pairs.panels(totacts[,c("TRKDMG", "EQPDMG", "ACCDMG", "TOTINJ", "TOTKLD")])
+```
+
+## Question 18
+```{r}
+totacts %>%
+  select(TOTINJ) %>% arrange(desc(TOTINJ)) %>% head()
+```
+
+
+# Part 4
+## Question 19
+```{r}
+totacts %>% select(YEAR, TYPE, ACCDMG) %>%
+  filter(ACCDMG > 1500000) %>% arrange(desc(ACCDMG))
+```
+
+## Question 20
+```{r}
+
+```
+
+## Question 21
+```{r}
+
+```
+
+## Question 22
+```{r}
+
+```
+
+## Question 23
+```{r}
+
+```
+
+## Question 24
+```{r}
+
+```
+
+## Question 25
+```{r}
+
+```
+
+## Question 26
+```{r}
+# one or more deaths
+totacts %>% select(YEAR, TYPE, TOTKLD) %>%
+  filter(TOTKLD >= 1) %>% arrange(desc(TOTKLD))
+```
+
+## Question 27
+```{r}
+ggplot(as.data.frame(table(totacts$TYPE)), aes(x = Var1, y= Freq)) +
+  geom_bar(stat="identity",fill= "steelblue")+ 
+  ggtitle("Accident Frequency by Type") +
+  labs(x = "Type of Accident")+
+  theme(axis.text.x = element_text(size = 8,  angle = 45))
+```
+
+## Question 28
+```{r}
+main_cause<- totacts %>%
+        group_by(CAUSE) %>%
+        count() %>% arrange(desc(n)) %>% head(5)
+
+ggplot(main_cause, aes(x = CAUSE, y=n)) +
+  geom_col(fill= "steelblue")+ 
+  ggtitle("Accident Frequency by Cause") +
+  labs(x = "Type of Cause")+
+  theme(axis.text.x = element_text(size = 8,  angle = 45))
+```
+

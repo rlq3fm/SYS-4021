@@ -1,0 +1,306 @@
+---
+title: "Midterm Review"
+author: "Reese Quillian"
+date: "2022-10-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(psych)
+library(ggplot2)
+library(GGally)
+library(devtools)
+library(ggfortify)
+library(here)
+library(dplyr)
+library(ggpubr)
+library(MASS)
+library(lindia)
+
+setwd("C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/")
+
+# read in data
+housing <- read.csv("housing.csv")
+```
+
+
+### Question 1 of 19
+
+Use a box plot to identify if the price variable has any outliers. If, so how many does it have? ____________
+
+```{r}
+ggplot(data=housing, aes(x=price)) + geom_boxplot()
+# no outliers
+```
+
+
+### Question 2 of 19
+
+Use a box plot to determine the value of the upper whisker of Price. What is this value? ___________
+
+```{r}
+summary(housing$price)
+boxplot.stats(housing$price)
+# upper whisker is max, so 1250000
+```
+
+
+### Question 3 of 19
+
+Use a scatter plot matrix to identify the variable in the data set that has the strongest linear relationship with price.
+
+ **A. sqft**
+ B. City
+ C. bedrooms
+ D. baths
+
+```{r}
+pairs.panels(housing[,c("sqft", "City", "bedrooms", "baths", "price")])
+```
+
+
+### Question 4 of 19
+
+Use a scatter plot matrix to identify the correlation coefficient between price and the variable in the data set that has the strongest linear relationship with price. _______________
+
+```{r}
+# strongest correlation is 0.65 
+# price and sqft
+```
+ 
+
+### Question 5 of 19
+
+Build a main effects model, house.main, using sqft, bedrooms, and baths. The response variable is price. 
+
+Which of the following statement(s) are true?
+
+ **A. The model is significant at the p<0.01 level.**	
+ B. All of the predictors are significant at the p<0.01 level	
+ C. None of the predictors are significant at the p<0.01 level.	
+ **D. Only one of the coefficients is significant at the p<0.01 level.**	
+ E. The intercept is significant at the p<0.01 level.	
+
+```{r}
+# Y = B0 + B1X1 + B2X2 + B3X3
+# X1 = sqft
+# X2 = bedrooms
+# X3 = baths
+
+house.main<-lm(price~sqft+bedrooms+baths, data=housing)
+summary(house.main)
+```
+
+
+### Question 6 of 19
+
+Explain the effect on price of a one unit increase in sqft in your house.main model.
+
+For every 1 unit increase in square footage, there is a ________ dollar change in price.
+
+```{r}
+coef(house.main)
+# B sqft = 221.378 -> $221.378 change in price
+```
+
+
+### Question 7 of 19
+
+Build a model, house.inter, that includes the main effect and all interaction terms using sqft, bedrooms, and baths. The response variable is price. 
+
+Which of the following statement(s) are true?
+
+ A. All of the predictors are significant at the p<0.01 level.	
+ B. All of the predictors except 1 are significant at the p<0.01 level.	
+ C. None of the predictors are significant at the p<0.01 level.	
+ D. The intercept is not significant at the p<0.01 level.	
+ E. The model is significant at the p<0.01 level.	
+
+```{r}
+house.inter<-lm(price~(sqft+bedrooms+baths)^2, data=housing)
+summary(house.inter)
+```
+
+
+### Question 8 of 19
+
+Which of the following is the hypothesis for the partial F test to compare the models house.main and house.inter?
+
+ A. Bsqft=Bbedrooms=Bbaths=0
+ B. Bsqft=0
+ C. Bsqft* bedrooms=Bbedrooms* baths=Bsqft*baths=0
+ D. Bsqft=Bbedrooms=BbathsBsqft* bedrooms=Bbedrooms* baths=Bsqft*baths=0
+
+
+### Question 9 of 19
+
+Conduct the partial F test to compare the models house.main and house.inter. Which of the following statements are true?
+
+ **A. We choose the smaller model.**	
+ B. We choose the larger model.	
+ C. The models are the same so it doesn't matter which one we choose.	
+ **D. The p-value for the partial F-test is greater than 0.05**	
+ 
+```{r}
+anova(house.main,house.inter)
+```
+ 
+
+
+### Question 10 of 19
+
+
+Use both AIC and adjusted-R2 to compare house.main and house.inter. 
+
+What are the values you find for this comparison?
+
+
+```{r}
+# house.main adjusted-R2: 
+summary(house.main)$adj.r.squared
+
+# house.inter adjusted-R2:
+summary(house.inter)$adj.r.squared
+
+# house.main AIC: 
+AIC(house.main)
+
+# house.inter AIC: 
+AIC(house.inter)
+```
+
+ 
+
+### Question 11 of 19
+
+Based on the AIC and adjusted-R2 values of models house.main and house.inter,  which of the following statements are true?
+
+**A. We choose the smaller model based on AIC and adjusted-R2.**
+ B. We choose the larger model based on AIC and adjusted-R2.	
+ C. We choose the smaller model based on AIC but the larger model based on adjusted-R2.	
+ D. We choose the larger model based on AIC but the smaller model based on adjusted-R2.	
+ E. The models are the same based on AIC but the larger model based on adjusted-R2 so we choose the larger model.	
+
+
+### Question 12 of 19
+
+Plot diagnostics for house.main. How many points have a Cook's distance > 0.5?  ________
+
+```{r}
+autoplot(house.main, which=4, ncol = 1, label.size = 3) + theme_bw()
+```
+```{r}
+cooks <- cooks.distance(house.main)
+cooks[(cooks > 0.5)] # no points > 0.5
+```
+
+
+### Question 13 of 19
+
+Do you observe any diagnostic problems in the residuals vs. fitted or the q-q plot for house.main model?
+
+ A. Non-constant variance.	
+ B. Non-linear fit indicated by non-constant mean.	
+ **C. QQ plot shows at least one tail non-Gaussian.**	
+ D. No problems observed in diagnostic plots.	
+ 
+```{r}
+library(olsrr)
+ols_test_breusch_pagan(house.main)
+par(mfrow = c(2, 2))
+plot(house.main)
+
+autoplot(house.main, which=1, ncol = 1, label.size = 3) + theme_bw()
+```
+ 
+
+
+### Question 14 of 19
+
+Based on the Box-Cox plot, would you recommend a transformation of the response variable for house.main? If so, what transformation?
+
+ A. No transformation
+ **B. Log transformation**
+ C. Box cox transformation with L=0.1
+ D. Box cox transformation with L=0.5
+ 
+```{r}
+boxcox(house.main)
+boxcox(house.main, plotit = F)$x[which.max(boxcox(house.main, plotit = F)$y)] 
+# log transformation because 0 is in confidence interval
+```
+ 
+
+### Question 15 of 19
+
+If you were to build a model with City as a predictor for Price, which of the following statement(s) would be true? 
+
+ A. Antioch would be the default base case for City.	
+ B. Tustin would be the default base case for City.	
+ C. This would not be a good idea because there are too many levels of City to use without recoding to fewer levels.	
+ D. City does not have a base case	
+ E. There are greater than 40 levels of City.	
+
+```{r}
+n_distinct(housing$City)
+
+contrasts(as.factor(housing$City))
+```
+
+
+### Question 16 of 19
+
+Using the correlation matrix, find the principal components for the variables price, sqft, bedrooms, and baths. Which 2 variables have the largest absolute loadings in the first principal component?
+
+ A. price	
+ *B. sqft*	
+ C. bedrooms	
+ *D. baths*	
+
+```{r}
+house.main.cor <- princomp(housing[,c("price","sqft","bedrooms","baths")], cor = T)
+house.main.cor$loadings
+```
+
+
+### Question 17 of 19
+
+How many PCs are needed to explain 90% of the variance in the data?
+
+ A. 1
+ B. 2
+ C. 3
+ D. 4
+```{r}
+source("PCAplots.R")
+cumsum <- cumplot(house.main.cor)
+cumsum$plot
+```
+
+
+### Question 18 of 19
+
+Looking at the biplot which variable is most correlated with Price in the first two PCs?
+
+ A. Bedrooms
+ B. Baths
+ C. Sqft
+ D. City
+ 
+```{r}
+biplot(house.main.cor, main="Biplot with Correlation Matrix")
+```
+
+
+### Question 19 of 19
+
+Looking at the biplot, which variable is most independent of Price in the first 2 PCs?
+
+ A. Bedrooms
+ B. Baths
+ C. Sqft
+ D. City

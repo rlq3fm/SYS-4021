@@ -1,0 +1,384 @@
+---
+title: "Final Exam"
+author: "Reese Quillian"
+date: "2022-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load libraries
+library(forecast)
+library(mtsdi)
+library(MTS)
+library(ggplot2)
+library(ggfortify)
+library(tseries)
+library(ggpubr)
+library(tidyverse)
+library(ggResidpanel)
+library(psych)
+library(GGally)
+library(devtools)
+library(here)
+library(dplyr)
+library(MASS)
+library(lindia)
+```
+
+```{r}
+# set up
+sourcedir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class"
+datadir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class/Data"
+
+setwd(sourcedir)
+
+source("PCAplots.R")
+source("FactorPlots.R")
+source("pc.glm.R")
+source("ROC.R")
+source("TestSet.R")
+
+# load data 
+```
+
+# Part 1 Linear Regression
+```{r}
+app <- read.table("app.csv", sep = ",", header = T)
+```
+
+Question 1
+```{r}
+ggplot(data=app, aes(x=Price)) + geom_boxplot()
+# 1 outlier
+boxplot.stats(app$Price)
+```
+
+
+Question 2
+Use a scatter plot matrix or individual scatter plots and list the variable in the data set that has the strongest linear relationship to Price.
+ A. Platform
+ B. Develop
+ C. X5Star
+ D. CompSites
+ **E. Date**
+ F. Advert
+ G. Users
+```{r}
+pairs.panels(app[,c("Platform","Develop", "X5Star", "CompSites", "Date","Advert","Users","Price")])
+```
+
+
+Question 3
+Which of the following is a main effects + interactions model using just Platform and Users as predictors of Price if the base case for Platform is Android?
+```{r}
+table(app$Platform)
+```
+
+
+Question 4
+Build a main effects + interaction model using only Users and Platform as predictors of Price
+```{r}
+app.lm<-lm(Price~(Users+Platform)^2,data=app)
+summary(app.lm)
+AIC(app.lm)
+```
+
+
+Question 5
+Build a main effects model to predict Price using all predictor variables.
+```{r}
+app.lm.full <- lm(Price~Platform+Develop+X5Star+CompSites+Date+Advert+Users,data=app)
+summary(app.lm.full)
+AIC(app.lm.full)
+```
+
+
+Question 6
+Between the models in Questions 4 and 5, which do you choose?
+
+- main effects bc lower AIC and higher R-squared
+
+
+Question 7
+```{r}
+autoplot(app.lm.full)
+```
+```{r}
+autoplot(app.lm.full, which=4, ncol = 1, label.size = 3) + theme_bw()
+```
+
+
+Question 8
+```{r}
+boxcox(app.lm.full) #box-cox plot
+```
+
+
+Question 9
+Which variables in this dataset can you not include in principal components analysis?
+- qualitative
+```{r}
+str(app)
+# platform
+```
+
+
+Question 10
+Using all of the variables that can be used for PCA, perform PCA with the correlation matrix. Which two variables have the highest absolute loading in the first PC?
+```{r}
+app.pca <- princomp(app[,c("Price", "Develop", "X5Star", "CompSites", "Date","Users")], cor = T)
+biplot(app.pca)
+```
+```{r}
+loadplot <- loadingsplot(app.pca)
+loadplot$loadings
+```
+
+# Part 2: GLM
+
+```{r}
+heart <- read.csv("heart.csv", sep=",", header=T)
+```
+
+Question 11-12
+Assume the probability of coronary heart disease (diag) can be modeled with a logistic function. Which of the following is a main effects logistic regression model for the log odds of coronary heart disease using the variables age, chest pain type (cp) and sex. Assume cp and sex are categorical and that they are encoded with Value 1 (typical angina) and Female as the base cases.
+
+Build the model from question 11 (make sure to use glm with family = binomial to build your model). Perform the model utility test for the model. Use the function as.factor() to convert cp and sex to categorical variables (it will automatically use Value 1 as the base case for cp and Female for sex- you do not need to recode this variable). Do you reject the null hypothesis at the 0.05 level?
+```{r}
+heart$cp <- as.factor(heart$cp)
+heart$sex <- as.factor(heart$sex)
+
+# null model
+heart.null <- glm(diag~1,data=heart,family=binomial)
+heart.main<-glm(diag~age+sex+cp, data=heart,family=binomial)
+```
+
+```{r}
+anova(heart.null, heart.main, test = "Chi")
+```
+
+
+Question 13
+In your model from question 12, interpret the coefficient you found for age. What is the percentage change in the odds of coronary heart disease for each additional year of life? Do not include the % symbol, just the percentage number. 
+```{r}
+summary(heart.main)
+```
+coefficient on age = 0.05961
+```{r}
+# for percent change multiply by 100:
+0.05961*100
+```
+
+
+Question 14
+```{r}
+contrasts(heart$cp)
+```
+
+
+Question 15
+Add the variables restbps, chol, and fbs to your model from question 12. Test the significance of the resulting model compared to the question 12 model using a likelihood test with a chi2 statistic. What significance level do you obtain for your test?
+```{r}
+heart.main2<-glm(diag~age+sex+cp+restbps+chol+fbs, data=heart,family=binomial)
+anova(heart.main,heart.main2,test="Chi")
+```
+
+choose the smaller model (question 16)
+
+
+Question 17
+Now add the last variable, restecg, to your model from Question 15. You should now have a main effects model with all predictor variables. Use as.factor to encode restecg as a categorial variable. Apply step() with default parameters to your model and list the variables selected in the stepwise solution.
+```{r}
+heart$restecg <- as.factor(heart$restecg)
+heart.main3<-glm(diag~age+sex+cp+restbps+chol+fbs+restecg, data=heart,family=binomial)
+```
+
+```{r}
+heart.step <- step(heart.main3,trace=T)
+```
+fbs,age,sex,cp = variables kept
+
+Question 18
+Suppose that our clients only want to know if age predicts coronary heart disease. We can use either the stepwise model we found in Question 17 or a model that only has age as a predictor. Which model should we use to answer their question and why should we choose it? (Select the best response)
+```{r}
+heart.age <- glm(diag~age,data=heart,family=binomial)
+summary(heart.step)
+```
+
+```{r}
+anova(heart.age, heart.step, test="Chi")
+```
+
+Question 19
+Use the stepwise selected model you found in Question 17 to obtain predicted values for the entire heart.csv data set you used to estimate the model. (Hint: the use of this data set is the default in R with the predict() function.) Now find the confusion matrix or score table with a threshold of 0.5. List the total errors, the false positive errors, and the false negative errors for this model.
+```{r}
+heart.pred <- predict(heart.step)
+```
+
+```{r}
+# confusion matrix
+score.table(heart.pred, heart$diag, .5)
+```
+
+```{r}
+# total errors
+55 + 39
+
+# false positives upper right
+39
+
+# false negatives lower left
+55
+```
+
+
+Question 20
+Plot the ROC curve for the stepwise selected model (Question 17) using the predicted values for this model that you found in question 19. If you want to make no false negative errors, what is best you can do to minimize the probability of a false positive error? Give an approximate value for the minimum value of the probability of a false positive by reading it off of the ROC curve.  (Hint:  source(ROC.R))
+```{r}
+plot.roc(heart.pred,heart$diag, main = "ROC Curve", col = "blue")
+```
+
+
+Question 21
+Which predictor variables can you include in principal components analysis?
+```{r}
+str(heart)
+```
+
+
+Question 22
+Perform PCA on the variables in question 21 using the correlation matrix. Rounded to a whole number, what percent of the variance is explained by the first two PCs? (Do not include the % symbol in your answer)
+```{r}
+heart.pca <- princomp(heart[,c("age", "restbps", "chol","diag")], cor = T)
+
+# Cumulative variance
+cum.heart <- cumplot(heart.pca)
+cum.heart$cumvar
+cum.heart$plot
+```
+
+
+Question 23
+Build a PC regression model using the number of PCs needed to explain 75% of the variability. Using the deviance test, is the model significant at the 5% level?
+```{r}
+heart.glm75 <- pc.glm(heart.pca, 75, heart$diag)
+heart.pc.null <- pc.null(heart.pca, 75, heart$diag)
+```
+```{r}
+# deviance test
+anova(heart.pc.null, heart.glm75,test="Chi")
+```
+
+
+Question 24
+Rounded to one decimal place, the AIC of the PC regression model is: 16.6
+
+Rounded to one decimal place, the AIC of the stepwise model from question 17: 397.3
+
+```{r}
+AIC(heart.glm75)
+AIC(heart.step)
+```
+
+
+Question 25
+Using a probability threshold of 0.5, compute a confusion matrix for the PC regression model. There are:
+```{r}
+heart.pred2 <- predict(heart.glm75)
+```
+
+```{r}
+# confusion matrix
+score.table(heart.pred2, heart$diag, .5)
+```
+
+
+# Part 3 Time Series
+
+```{r}
+sunspot <- read.table("sunspot.csv", sep = ",", header = T)
+sunspot.ts<-ts(sunspot$sunspotarea)
+```
+
+
+Question 26
+Plot the periodogram of the sunspot time series without the "spans" argument. Rounded to one decimal, the period of the peak with maximum frequency is _________ years. 
+
+```{r}
+pg.sunspot<- spec.pgram(sunspot.ts,demean=T,log='no')
+```
+```{r}
+# Find the peak, max.omega
+max.omega<-pg.sunspot$freq[which(pg.sunspot$spec==max(pg.sunspot$spec))]
+
+# Where is the peak?
+max.omega
+
+# What is the period?
+1/max.omega
+```
+
+
+Repeat with the argument "spans=12". Rounded to one decimal, the period of the peak with maximum frequency is ________ years.
+```{r}
+pg.sunspot2<- spec.pgram(sunspot.ts,spans=12,demean=T,log='no')
+```
+
+```{r}
+# Find the peak, max.omega
+max.omega2<-pg.sunspot2$freq[which(pg.sunspot2$spec==max(pg.sunspot2$spec))]
+
+# Where is the peak?
+max.omega2
+
+# What is the period?
+1/max.omega2
+```
+
+
+Question 27
+Build a model of the trend and seasonality of the sunspot time series. To model seasonality, use trigonometric functions assuming a period equal to the average of your two answers in Question 26. Controlling for seasonality, is there a statistically significant trend in the sunspot time series?
+```{r}
+period <- (max.omega + max.omega2) / 2
+t <- c(seq(1,dim(sunspot)[1]))
+
+sunspot.trend.seasonal <- lm(sunspot.ts ~ t + sin(2*pi*t/period) + cos(2*pi*t/period))
+summary(sunspot.trend.seasonal)
+```
+
+
+Question 28
+Plot the acf of the residuals of your Question 27 model. Which of the following is true?
+```{r}
+e.ts <- ts(sunspot.trend.seasonal$residuals)
+ggAcf(e.ts)
+```
+
+
+Question 29
+Plot the pacf of the residuals of your Question 27 model. Which of the following is true?
+```{r}
+ggPacf(e.ts)
+```
+
+
+Question 30
+Build an auto.arima model to the residuals of your Question 27 model using the argument "approximation=FALSE". What is the order of the model?
+```{r}
+sunspot.auto <- auto.arima(e.ts,approximation=FALSE)
+summary(sunspot.auto)
+```
+
+
+Question 31
+Plot the time series diagnostics of the residuals of your ARIMA model in Question 30. Which of the following is true?
+```{r}
+tsdiag(sunspot.auto,gof.lag=20)
+```
+
+
+

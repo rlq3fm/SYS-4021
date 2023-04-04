@@ -1,0 +1,396 @@
+---
+title: "Midterm"
+author: "Reese Quillian"
+date: "2022-10-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
+```
+
+
+```{r}
+library(psych)
+library(ggplot2)
+library(GGally)
+library(devtools)
+library(ggfortify)
+library(here)
+library(dplyr)
+library(ggpubr)
+library(MASS)
+library(lindia)
+library(olsrr)
+
+setwd("C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/")
+
+# read in data
+housing_prices <- read.csv("housing-prices.csv")
+```
+
+## Part 1
+
+### Question 1
+
+Use a box plot to determine if the price variable has any outliers. If so how many does it have?
+
+```{r}
+ggplot(data=housing_prices, aes(x=Price)) + geom_boxplot()
+# 7 outliers
+```
+
+
+### Question 2
+
+Use a scatter plot matrix or individual scatter plots to determine the variable in the data set that has the strongest linear relationship with price. What is it?
+
+```{r}
+pairs.panels(housing_prices[,c("Rooms", "Baths", "Size", "Age", "Price")])
+# size
+```
+
+
+### Question 3
+
+What is the correlation of the strongest linear relationship to Price?
+
+```{r}
+# size and price correlation = 0.84
+```
+
+
+### Question 4
+
+Which of the following is a main effects model using Baths as the only predictor variable and y to represent the true value of the observed response, not the modeled prediction?
+ A. log(y)= B0+B1X1 + e  where X1 = Baths
+ **B. y= B0+B1X1+e  where X1 = Baths**
+ C. y= B0+B1X1  where X1 = Baths
+ D. log(y)= B0+B1X1 where X1 = Baths
+
+```{r}
+# B
+```
+ 
+
+### Question 5
+
+Build a linear model, houses.lm1, to predict Price in terms of Baths. Which of the following is true about the relationship between Baths and Price?
+
+```{r}
+houses.lm1<-lm(Price~Baths, data=housing_prices)
+summary(houses.lm1)
+
+# B1 is positive -> positive relationship
+```
+
+
+### Question 6
+
+Use your model in Question 5 to explain the effect on price from having one more bathroom. The predicted selling price of a house decreases/increases by ________ dollars per added bathroom. 
+
+```{r}
+coef(houses.lm1)
+#95298.99
+```
+
+
+### Question 7
+
+Which of the following is a main effects model using all predictor variables (Baths, Rooms, Age, and Size) and y to represent the true value of the observed response, not its modeled prediction?
+
+ **A. y= B0 + B1X1 + B2X2 + B3X3+ B4X4  where X1 = Baths,  X2= Rooms,  X3 = 1 if Old; 0 otherwise,  X4=Size** 
+ B. y= B0 + B1X1 + B2X2 + B3X3 + B4X4 + e  where X1 = Baths,  X2 = Rooms,  X3 = 1 if Old; 0 otherwise,  X4 =Size    
+ C. y= B0 + B1X1 + B2X2 + B3X3 + B4X4 + B5X1X2 + B6X1X3 + B7X1X4 + B8X2X3 + B9X2X4 + B10X3X4  where X1 = Baths,  X2 = Rooms,  X3 = 1 if Old; 0 otherwise,  X4 = Size  
+ D. y= B0+B1X1 + B2X2 + B3X3 + B4X4 + B5X1X2 + B6X1X3 + B7X1X4 + B8X2X3 + B9X2X4 + B10X3X4 + e  where X1 = Baths,  X2= Rooms,  X3 = 1 if Old; 0 otherwise,  X4 = Size    
+
+### Question 8
+
+Which of the following is a model that includes the main effect and all interaction terms using ONLY Size and Age as predictors of the response, whose true, observed value is represented by y.
+
+ A. y= B0+ B1X1 + B2X2  where X1 = Size,  X2 = 1 if Old; 0 otherwise 
+ B. y= B0 + B1X1 + B2X2 + e  where X1 = Size,  X2 = 1 if Old; 0 otherwise  
+ **C. y= B0 + B1X1 + B2X2 + B3X1X2  where X1 = Size,  X2 = 1 if Old; 0 otherwise**
+ D. y= B0 + B1X1 + B2X2 + B3X1X2 + e  where X1 = Size  X2 = 1 if Old; 0 otherwise  
+
+
+
+### Question 9
+ 
+How many parameters does your interaction model in Question 8 have? **4**
+
+Coefficients?  **3**
+
+
+### Question 10
+
+What is the null hypothesis for the Partial F-test to compare the models you found in Questions 4 and 7?
+
+ A. B1=0
+ B. B1=B2=0
+ **C. B2=B3=B4=0**
+ D. B4=0
+ 
+
+### Question 11
+
+Conduct the partial F test to compare the models you found for Questions 4 and 7.  What is the exact p-value (not the significance level)?
+
+```{r}
+houses.lm2<-lm(Price~Baths+Rooms+Age+Size, data=housing_prices)
+summary(houses.lm2)
+
+anova(houses.lm1, houses.lm2)
+```
+
+
+
+### Question 12
+
+What do the results of the partial F test comparing the models you found for Questions 4 and 7 suggest with regards to which model you should choose?
+
+ **A. Reject the null hypothesis and therefore use the larger model with additional terms.**
+ B. Fail to reject this hypothesis and therefore use the smaller model without additional terms.
+ C. Reject the null hypothesis and therefore use the smaller model without additional terms.
+ D. Fail to reject this hypothesis and therefore use the larger model with additional terms.
+
+
+### Question 13
+ 
+Now create a stepwise model from a main effects + interaction model for ALL predictor variables.  What is the AIC of the model? Round to the nearest whole number.
+ 
+```{r}
+houses.inter <- lm(Price~(Baths+Rooms+Age+Size)^2,data=housing_prices)
+#summary(houses.inter)
+
+#step
+houses.step<-step(houses.inter, trace=T)
+summary(houses.step)
+#AIC(houses.step)
+```
+ 
+
+
+### Question 14
+
+For your stepwise model from Question 13 (a main effects + interaction model for ALL predictor variables).  How many parameters are significant at the 0.05 level? 
+
+```{r}
+# 7 significant paramaeters (includes intercept)
+```
+ 
+
+### Question 15
+
+Model diagnostics
+
+```{r}
+par(mfrow = c(2, 2))
+plot(houses.step)
+
+# non-constant variance
+ols_test_breusch_pagan(houses.step) # p-value <.05 so there is non-constant variance
+
+autoplot(houses.step, which=4, ncol = 1, label.size = 3) + theme_bw()
+```
+
+
+### Question 16
+
+For your stepwise model from Question 13, using Box-Cox plot would you recommend a transformation of the response variable and if so, what type?
+
+```{r}
+boxcox(houses.step)
+boxcox(houses.step, plotit = F)$x[which.max(boxcox(houses.step, plotit = F)$y)]
+
+# power transformation with L=0.5
+```
+
+
+### Question 17
+
+Answer the following questions about the point with the highest Cook's distance.
+
+```{r}
+# observation number 9
+# other info:
+housing_prices[9,]
+```
+
+
+### Question 18
+
+Which variables could not be included in principal components analysis of this dataset?
+- anything quantitative (i.e. NOT AGE)
+
+
+### Question 19
+
+Using the correlation matrix, find the principal components for the dataset using all variables that can be included in PCA.  Which 2 variables have the largest absolute loadings in the first principal component?
+
+```{r}
+houses.corr <- princomp(housing_prices[,c("Price","Rooms","Baths","Size")], cor = T)
+houses.corr$loadings
+
+# size and price
+```
+
+### Question 20
+
+In the first PC, Price moves in the same direction as:
+
+rooms, baths, and size because they are all positive
+
+
+### Question 21
+
+Which 2 variables have the largest absolute loadings in the second principal component? 
+rooms and price
+
+### Question 22
+
+In the second PC, Price moves in the same direction as:
+size only
+
+### Question 23
+
+Which of the following is true about the scree plot
+
+```{r}
+# scree plot
+source("PCAplots.R")
+ggscreeplot(houses.corr)
+```
+
+
+### Question 24
+
+How many principal components would it take to account for 90 percent of the variance?
+
+```{r}
+cumplot(houses.corr)
+# 3 pcs
+```
+
+### Question 25
+
+Make a biplot of the data in the first two PCs. Which variables appear most correlated in the first two PCs?
+
+```{r}
+biplot(houses.corr)
+# price and size
+```
+
+### Question 26
+
+Based on the biplot, which two variables appear most independent in the first two PCs?
+
+closest to perpendicular -> price and rooms
+
+### Question 27
+
+Find the observation with the largest absolute value of PC2. What is the size of this house in square feet?
+
+```{r}
+ggbiplot(houses.corr, varname.size = 5, labels=row(housing_prices)[,1], plot.obs=TRUE, 
+         xlim=c(-0.2,0.4), ylim=c(-0.3,0.3))
+
+# observation 88:
+
+housing_prices[88,]
+#housing_prices[2,]
+```
+
+## Part 2
+
+### Question 28
+
+Make a boxplot of child_mort. How many outliers are there? (Hint: use the statistics of the boxplot if you can't count them in the figure)   
+
+```{r}
+country <- read.csv("Country-data.csv")
+```
+
+```{r}
+ggplot(data=country, aes(x=child_mort)) + geom_boxplot()
+boxplot.stats(country$child_mort)
+```
+
+
+### Question 29
+
+What countries do the outliers correspond to?
+
+```{r}
+# observations are where child mort = 149, 150, 208, 160
+country %>% filter(child_mort %in% c(149,150,208,160))
+```
+
+### Question 30
+
+Which country has the lowest child mortality rate?
+
+```{r}
+country %>% arrange(child_mort) %>% head()
+```
+
+### Question 31
+
+Make a scatter plot of all variables in the dataset except "Country." Which variable's correlation coefficient with child_mort has the greatest absolute value?
+
+```{r}
+pairs.panels(country[,c("child_mort", "exports", "health", "imports", "income","inflation","life_expec","total_fer","gdpp")])
+```
+
+### Question 32
+
+Using the correlation matrix, perform PCA on this dataset, excluding the "Country" variable. How many PCs are needed to explain 90% of the variance in the dataset? 
+
+```{r}
+countries.corr <- princomp(country[,c("child_mort", "exports", "health", "imports", "income","inflation","life_expec","total_fer","gdpp")], cor = T)
+```
+
+```{r}
+cumplot(countries.corr)
+```
+
+### Question 33
+Make a biplot of the data in the first two PCs. Which variable is most positively correlated with child mortality in the first two PCs?
+
+```{r}
+biplot(countries.corr)
+# without observations
+ggbiplot(countries.corr, varname.size = 3, labels=row(country)[,1], plot.obs=TRUE, 
+         xlim=c(-3,3), ylim=c(-3,3))
+```
+
+### Question 34
+
+Based on the biplot, which variable is most unrelated to child_mort?
+imports, almost exactly 90 degrees
+
+### Question 35
+
+```{r}
+# obs 114
+country[114,]
+```
+
+### Question 36
+```{r}
+# highest in PC 2 is obs 134
+country[134,]
+```
+
+### Question 37
+
+How many variables vary in the same direction as child_mort in the first PC?
+```{r}
+countries.corr$loadings
+```
+
+### Question 38
+
+Which two variables have the largest absolute loading in the second PC?
+
+exports and imports

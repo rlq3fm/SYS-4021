@@ -1,0 +1,314 @@
+---
+title: "Lab 6 Time Series"
+author: "Reese Quillian"
+date: "2022-11-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# data and libraries
+datadir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/In Class/Data"
+sourcedir <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021"
+
+##load the 'ham_ts.csv' and 'spam_ts.csv' into ham and spam variables repectively
+setwd(datadir)
+ham<-read.table('ham_ts.csv',header=T,sep=',')
+spam<-read.table('spam_ts.csv',header=T,sep=',')
+setwd(sourcedir)
+
+##load libraries (install them if necessary)
+library(forecast)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+##use the ts() command to get a time series of ham amount using ham data from all years
+ham.ts<-ts(ham$count)
+
+##use the ts() command to get a time series of spam amount using spam data from all years
+spam.ts<-ts(spam$count)
+```
+
+
+Question 26 of 48
+There are _________ observations in ham_ts.csv and _________ in spam_ts.csv.  
+506, 364
+
+```{r}
+nrow(ham)
+nrow(spam)
+```
+
+Question 27 of 48
+On average, there are ___________ spam emails per day.
+```{r}
+mean(spam.ts)
+```
+
+Question 28 of 48
+On average, there are __________ ham emails per day.  
+```{r}
+mean(ham.ts)
+```
+
+Question 29 of 48
+Modify your ham time series object by removing the last six weeks as we discussed in class.  Use this new ham ts object for the remainder of the quiz.
+
+Model the trend of ham using only time as a predictor. Which of the following statements are correct?
+ A. There is a significant trend of ham at the 0.05 significance level.	
+ B. The coefficient on time in the model is greater than 0.05.	
+ C. The number of ham emails decreases with the increase of time.	
+ D. There is no significant trend of ham.
+ 
+```{r}
+#Remove the last six weeks from ham.ts
+ham.ts <-ts(ham$count[1:464])
+
+time.ham<-c(1:(length(ham.ts)))
+ham.trend<-lm(ham.ts~time.ham)
+summary(ham.trend)
+```
+
+
+Question 30 of 48
+Use the acf() function on your ham.ts object. Which of the following statements are true? (select all that apply)
+ A. There are no significant autocorrelations in the ham time series after lag=5.	
+ B. There are some significant autocorrelations in the ham time series until at least lag=25.	
+ C. There are no significant autocorrelations in the acf plot for the ham time series.	
+ D. There is a clear seasonality in the ham time series.	
+```{r}
+acf(ham.ts)
+ggAcf(ham.ts)
+```
+ 
+ Question 31 of 48
+Generate the periodogram for your ham data set. Which of the following statements is true?
+ A. There is a cyclical component.
+ B. There is a ~7 day period.
+ C. There is a monthly seasonal component
+ D. There is no obvious seasonality in the ham periodogram.
+```{r}
+pg.ham <- spec.pgram(ham.ts,spans=9,demean=T,log='no')
+
+# Find the peak, max.omega.ham
+max.omega.ham<-pg.ham$freq[which(pg.ham$spec==max(pg.ham$spec))]
+
+# Where is the peak?
+max.omega.ham
+
+# What is the period?
+1/max.omega.ham
+```
+
+
+Model the trend and the weekly seasonality of ham. Call your new model 'ham.trendseason'. To model the seasonality of ham, create a new categorical predictor variable, Day. Use the days of the weeks as your variables 'F, Sa, S, M, T, W, Th'.
+```{r}
+Day <- rep(NA, length(ham.ts))
+Day[which((time.ham %% 7) == 0)] <- "F"
+Day[which((time.ham %% 7) == 1)] <- "Sa"  
+Day[which((time.ham %% 7) == 2)] <- "S"
+Day[which((time.ham %% 7) == 3)] <- "M"
+Day[which((time.ham %% 7) == 4)] <- "T"
+Day[which((time.ham %% 7) == 5)] <- "W"
+Day[which((time.ham %% 7) == 6)] <- "Th"
+Day <- as.factor(Day)
+
+ham.trendseason<-lm(ham.ts~time.ham+Day)
+```
+
+Question 32 of 48
+Which day of the week is the default base case for your model ?
+```{r}
+contrasts(Day)
+```
+
+
+Question 33 of 48
+Based on your new model, 'ham.trendseason', which of the following statements is true?
+ A. Your model ham.trendseason is significant at a 0.05 level.	
+ B. None of the days of the week are significantly different than the base case.	
+ C. All of the days of the week are significantly different than the base case.	
+ D. Only trend is significant.	
+```{r}
+summary(ham.trendseason)
+```
+
+Question 34 of 48
+Based on your new model, 'ham.trendseason', which of the following statements is true? (select all that apply)
+x A. The frequency of ham e-mail is decreasing on weekdays.	
+ B. The frequency of ham e-mail is decreasing on weekends.	
+ C. The frequency of ham e-mail on weekdays is not significantly different from the base case.	
+ D. None of the above	
+```{r}
+
+```
+
+
+
+
+Create a new model of the number of ham emails per day using only the daily seasonality of ham, 'Day', as a predictor. Call your new model 'ham.season'.
+
+```{r}
+ham.season<-lm(ham.ts~Day)
+```
+
+Question 35 of 48
+Is the new model significant at the 0.05 level?
+ A. Yes
+ B. No
+```{r}
+summary(ham.season)
+```
+ 
+Question 36 of 48
+Run a partial F-test between 'ham.trendseason' and 'ham.season'.
+
+Which model do you choose?  Use a 0.05 significance level.
+ A. The smaller model.
+ B. The larger model.
+```{r}
+anova(ham.trendseason,ham.season, test="Chi")
+```
+
+
+Question 37 of 48
+Use the acf() function on your spam.ts object. Which of the following statements is true?
+ A. There are no significant autocorrelations after lag=5.
+ B. There are significant autocorrelations after lag=5.
+ C. There are no significant autocorrelations in the acf plot for spam.
+```{r}
+acf(spam.ts)
+```
+
+Question 38 of 48
+Generate the periodogram for your spam data set. Which of the following statements is true?
+ A. There is a weekly seasonal component.
+ B. There is a daily seasonal component.
+ C. There is a monthly seasonal component.
+ D. There is no obvious seasonality in the spam periodogram.
+```{r}
+pg.spam <- spec.pgram(spam.ts,spans=9,demean=T,log='no')
+```
+
+Question 39 of 48.
+In your spam periodogram, ωmax is __________ and the period is __________ days.
+```{r}
+# Find the peak, max.omega.spam
+max.omega.spam<-pg.spam$freq[which(pg.spam$spec==max(pg.spam$spec))]
+
+# Where is the peak?
+max.omega.spam
+
+# What is the period?
+1/max.omega.spam
+```
+
+Question 40 of 48
+Using only time as a predictor, model the trend of spam for all but the last 7 days of observations (spam.ts[1:(length(spam.ts)-7)]). Call your model 'spam.trend'. Which of the following statements is correct?
+ A. There is a significant trend of spam.
+ B. The coefficient on time in the model is greater than 0.05.
+ C. The number of spam emails decreases with the increase of time.
+ D. There is no significant trend of spam.
+```{r}
+spam.ts <- (spam.ts[1:(length(spam.ts)-7)])
+
+time.spam<-c(1:(length(spam.ts)))
+spam.trend<-lm(spam.ts~time.spam)
+summary(spam.trend)
+```
+
+Question 41 of 48
+Get the residuals from the 'spam.trend' model and store them in e.ts.spam. Which of the following statements is true about e.ts.spam?
+
+ A. Its ACF has an exponential decay
+ B. Based on its ACF, there are likely autoregressive terms.
+ C. There are no autoregressive or moving average terms necessary to model the residuals.
+ D. None of the above
+```{r}
+e.ts.spam <- ts(spam.trend$residuals)
+acf(e.ts.spam)
+```
+
+Question 43 of 48
+Use auto.arima with the argument "approximation=FALSE" on 'e.ts.spam'. Call your new model spam.auto. What is the order of your new model spam.auto?
+ A. ARIMA(1,0,0)
+ B. ARIMA(1,0,1)
+ C. ARIMA(1,1,1)
+ D. ARIMA(2,1,0)
+```{r}
+spam.auto <- auto.arima(e.ts.spam,approximation=FALSE)
+summary(spam.auto)
+```
+
+Question 44 of 48
+The resulting AIC for the model spam.auto is ___________
+```{r}
+AIC(spam.auto)
+```
+
+Question 45 of 48
+Fit an ARIMA(1,1,1) to 'e.ts.spam' time series.  Call this new model spam.arima111.
+
+Which of the following statements is true about the non-zero lags of the ACF and PACF plots of the residuals for the spam.arima111 model?
+ A. There are no significant spikes in the ACF or PACF.
+ B. There are significant spikes in both the ACF and the PACF.
+ C. The ACF shows a linear decay.
+ D. The PACF has significant spikes from a lag of 5 and beyond.
+```{r}
+spam.arima111 <- arima(e.ts.spam, order=c(1,1,1))
+summary(spam.arima111)
+
+
+spam.acf <- ggAcf(e.ts.spam)
+spam.pacf <- ggPacf(e.ts.spam)
+
+# Plot acf and pacf side by side for easier examination
+ggarrange(spam.acf,spam.pacf,nrow=2,ncol=1)
+
+```
+
+Question 46 of 48
+Use auto.arima with the argument "approximation=FALSE" to build a new ARIMA model directly to all but the last 7 days of spam.ts (spam.ts[1:(length(spam.ts)-7)]). Call this model spam.auto1.  The ARIMA model has the following order:
+p=  ________
+
+d=  ________
+
+q=  _________
+```{r}
+spam.auto1 <- auto.arima(spam.ts,approximation=FALSE)
+summary(spam.auto1)
+```
+
+Question 47 of 48
+Which of the following statements is true about the non-zero lags of the ACF and PACF plots of the residuals for the spam.auto1 model?
+ A. There are no significant spikes in the ACF or PACF.
+ B. There are significant spikes in both the ACF and the PACF.
+ C. The ACF shows a linear decay.
+ D. The PACF has significant spikes from a lag of 5 and beyond.
+```{r}
+e.ts.spam1 <- ts(spam.auto1$residuals)
+spam1.acf <- ggAcf(e.ts.spam1)
+spam1.pacf <- ggPacf(e.ts.spam1)
+
+# Plot acf and pacf side by side for easier examination
+ggarrange(spam1.acf,spam1.pacf,nrow=2,ncol=1)
+```
+
+Question 48 of 48
+Which of the following models are adequate based on the Ljung-Box statistic plot? Select all that apply.
+ **A. spam.auto up to lag 20.	
+ **B. spam.auto1 up to lag 20.	
+ **C. spam.arima111 model up to lag 20.	
+ D. None of the models are adequate.
+```{r}
+ggtsdiag(spam.auto,gof.lag=20)
+
+ggtsdiag(spam.auto1,gof.lag=20)
+
+ggtsdiag(spam.arima111,gof.lag=20)
+```
+

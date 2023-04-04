@@ -1,0 +1,233 @@
+---
+title: "Lab 2"
+author: "Reese Quillian"
+date: "2022-09-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Loading packages and files
+```{r}
+# loading packages
+library(lattice)
+library(tidyverse)
+library(ggplot2)
+library(psych)
+
+# specifying files and directories
+dir_trains <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/Lab 2/Data/"
+dir_source <- "C:/Users/Student/OneDrive - University of Virginia/Documents/SYS4021/Lab 2/"
+
+# loading functions from scripts
+source(paste0(dir_source, "AccidentInput.R"))
+source(paste0(dir_source, "PCAplots.R"))
+
+
+# create totacts dataframe
+fnames_trains <- list.files(dir_trains, pattern = ".csv", full.names = TRUE)
+acts <- lapply(fnames_trains, read.csv)
+comvar <- intersect(colnames(acts[[1]]), colnames(acts[[8]]))
+totacts <- combine.data(acts, comvar)
+
+totacts <- tibble(totacts)
+```
+
+
+```{r}
+# add casualty
+totacts2 <- totacts %>%
+  mutate(casualty = TOTINJ + TOTKLD)
+```
+
+
+```{r}
+# Question 9
+# zero median
+ggplot(as.data.frame(totacts2), aes(casualty)) + 
+  geom_boxplot() + 
+  ggtitle("Total Casualties")
+```
+
+
+```{r}
+# Question 10
+# 3814 rows out of 65465 -> 0.05826
+str(totacts2 %>%
+  select(casualty)%>%
+  filter(casualty > 0))
+```
+
+```{r}
+# only casualties
+totacts_posCas <- totacts2 %>% filter(casualty > 0)
+```
+
+```{r}
+# remove duplicates
+totacts_posCas_nd <- totacts_posCas[!(duplicated(totacts_posCas[, c("INCDTNO", "YEAR", "MONTH", "DAY", "TIMEHR", "TIMEMIN")])),]
+nrow(totacts_posCas)
+nrow(totacts_posCas_nd)
+
+# 3814 - 3726 = 88 rows removed
+```
+
+```{r}
+bwplot(YEAR~casualty, main = "Box Plots of Casualties", xlab = "# of Casualties", ylab = "Year", data = totacts_posCas_nd)
+
+# 2005 = second most casualties
+```
+
+```{r}
+# lowest total number (sum) of casualties across all accidents?
+
+# 2003
+totacts_posCas_nd %>% 
+  filter(YEAR == 3) %>% summarize(sum(casualty)) #437
+
+# 2004
+totacts_posCas_nd %>% 
+  filter(YEAR == 4) %>% summarize(sum(casualty)) # 558
+
+# 2010
+totacts_posCas_nd %>% 
+  filter(YEAR == 10) %>% summarize(sum(casualty)) # 344
+
+# 2014
+totacts_posCas_nd %>% 
+  filter(YEAR == 14) %>% summarize(sum(casualty)) #256
+
+```
+
+```{r}
+# 2003
+nrow(totacts_posCas_nd %>% filter(YEAR == 3)) # 197
+
+# 2004
+nrow(totacts_posCas_nd %>% filter(YEAR == 4)) # 230
+
+# 2011
+nrow(totacts_posCas_nd %>% filter(YEAR == 11)) # 165
+
+# 2012
+nrow(totacts_posCas_nd %>% filter(YEAR == 12)) # 149
+```
+
+```{r}
+# Which accident type has the largest number of accidents with one or more casualties?
+totacts_posCas_nd$TYPE <- factor(totacts_posCas_nd$TYPE, labels = c("Derailment", "HeadOn", "Rearend", "Side", "Raking", "BrokenTrain", "Hwy-Rail", "GradeX", "Obstruction", "Explosive", "Fire","Other","SeeNarrative" ))
+
+# derailment
+nrow(totacts_posCas_nd %>% filter(TYPE == "Derailment")) # 465
+
+# head on
+nrow(totacts_posCas_nd %>% filter(TYPE == "HeadOn")) # 85
+
+# highway-rail
+nrow(totacts_posCas_nd %>% filter(TYPE == "Hwy-Rail")) # 2337
+
+# fire
+nrow(totacts_posCas_nd %>% filter(TYPE == "Fire")) # 32
+
+table(totacts_posCas_nd$TYPE) #easier way
+```
+
+```{r}
+# Defining cause variable
+
+# Create a new variable called Cause
+# that uses labels for cause.
+# Add it to totacts.
+totacts_posCas_nd$Cause <- rep(NA, nrow(totacts_posCas_nd))
+
+totacts_posCas_nd$Cause[which(substr(totacts_posCas_nd$CAUSE, 1, 1) == "M")] <- "M"
+totacts_posCas_nd$Cause[which(substr(totacts_posCas_nd$CAUSE, 1, 1) == "T")] <- "T"
+totacts_posCas_nd$Cause[which(substr(totacts_posCas_nd$CAUSE, 1, 1) == "S")] <- "S"
+totacts_posCas_nd$Cause[which(substr(totacts_posCas_nd$CAUSE, 1, 1) == "H")] <- "H"
+totacts_posCas_nd$Cause[which(substr(totacts_posCas_nd$CAUSE, 1, 1) == "E")] <- "E"
+
+# This new variable, Cause, has to be a factor
+totacts_posCas_nd$Cause <- factor(totacts_posCas_nd$Cause)
+
+table(totacts_posCas_nd$Cause)
+```
+
+```{r}
+# Cause with largest number of casualties
+# E
+totacts_posCas_nd %>% 
+  filter(Cause == "E") %>% summarize(sum(casualty)) # 379
+
+# H
+totacts_posCas_nd %>% 
+  filter(Cause == "H") %>% summarize(sum(casualty)) # 3361
+
+# M
+totacts_posCas_nd %>% 
+  filter(Cause == "M") %>% summarize(sum(casualty)) # 6076
+
+# S
+totacts_posCas_nd %>% 
+  filter(Cause == "S") %>% summarize(sum(casualty)) # 16
+
+# T
+totacts_posCas_nd %>% 
+  filter(Cause == "T") %>% summarize(sum(casualty)) # 2281
+
+```
+
+```{r}
+# Looks at TYPEQ
+# First convert to numeric, using as.numeric()
+totacts_posCas_nd$TYPEQ <- as.numeric(totacts_posCas_nd$TYPEQ)
+
+# Now convert to factor- use actual categories from data dictionary to be more informative
+totacts_posCas_nd$TYPEQ <- factor(totacts_posCas_nd$TYPEQ, labels = c("Freight", "Passenger", "Commuter", "Work",  "Single", "CutofCars", "Yard", "Light", "Maint"))
+```
+
+```{r}
+table(totacts_posCas_nd$TYPEQ)
+```
+
+
+```{r}
+# sum of casualties over all years
+totacts_posCas_nd %>% summarize(sum(casualty))
+```
+
+```{r}
+# accident with most extreme # of casualties
+totacts_posCas_nd %>% select(casualty, TOTKLD, AMPM, TYPEQ, NARR1, NARR2, NARR3, NARR4) %>%
+  arrange(desc(casualty)) %>% head()
+```
+
+```{r}
+totacts_posCas_nd_noMax <- totacts_posCas_nd %>% filter(casualty < 1000)
+
+pairs.panels(totacts_posCas_nd_noMax[,c("TRNSPD", "CARS", "TIMEHR", "TEMP", "casualty")])
+```
+
+```{r}
+# import libraries
+library(data.table)
+library(plyr)
+library(scales)
+library(grid)
+library(ggpubr)
+
+# PCA Analysis
+totacts.pca.corr <- princomp(totacts_posCas_nd_noMax[,c("casualty", "TRNSPD", "CARS", "TIMEHR", "TEMP")], cor = T)
+
+loadplot.corr <- loadingsplot(totacts.pca.corr)
+loadplot.corr$loadings
+```
+
+```{r}
+# cumulative variance
+corr_cumsum <- cumplot(totacts.pca.corr)
+corr_cumsum$plot
+```
+
